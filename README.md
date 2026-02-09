@@ -1,20 +1,12 @@
-# Sales Dashboard (Postgres Analytics + MySQL Sync)
+# Sales Dashboard (Direct MySQL + Optional Sync)
 
-This app reads from **Postgres** and syncs data from your ERP MySQL database into a separate analytics DB.
+This app reads directly from your ERP **MySQL** database. A separate sync script still exists if you want to maintain a Postgres analytics copy, but the live dashboard uses MySQL.
 
 Tables synced:
 
 - `tabSales Invoice Item`
 - `tabSales Invoice`
 - `tabItem`
-
-Postgres tables created:
-
-- `sales_invoice_item`
-- `sales_invoice`
-- `item`
-
-`sales_invoice_item` includes `creation`, `modified`, and `docstatus` for tracking.
 
 ## Features
 
@@ -25,12 +17,13 @@ Postgres tables created:
 - Invoice list and clickable detail drawer
 - Filters: date range, item, warehouse, category, customer, status (Draft/Submitted)
 - Calendar day picker with year/month selectors and clear button
+- Quick month buttons (current month + previous 3 months)
+- Client-side analytics for preloaded data (fast interactions)
 
 ## Requirements
 
 - Node.js 18+
 - MySQL 5.7+/8.0+
-- Postgres 12+
 
 ## Setup
 
@@ -39,10 +32,7 @@ npm install
 cp .env.example .env
 ```
 
-Edit `.env` with:
-
-- MySQL ERP credentials
-- Postgres analytics credentials
+Edit `.env` with MySQL ERP credentials.
 
 ## Run
 
@@ -52,13 +42,13 @@ Start the API/UI:
 npm run dev
 ```
 
-Run a sync (one-off):
+Optional: run a sync (one-off) if you still want to maintain a Postgres analytics DB:
 
 ```bash
 npm run sync
 ```
 
-## Recommended: Scheduled Sync
+## Recommended: Scheduled Sync (Optional)
 
 Run every few minutes (example: every 5 minutes):
 
@@ -76,24 +66,15 @@ Run every few minutes (example: every 5 minutes):
 - `DB_PASSWORD`
 - `DB_NAME`
 
-### Postgres (Analytics)
-
-- `PG_HOST`
-- `PG_PORT` (default `5432`)
-- `PG_USER`
-- `PG_PASSWORD`
-- `PG_DB`
-- `PG_SSL` (`true`/`false`)
-
-### Sync
+### Sync (Optional)
 
 - `SYNC_BATCH_SIZE` (default `2000`)
 
-### App Tables/Columns (Postgres)
+### App Tables/Columns (MySQL ERP)
 
-- `SALES_ITEM_TABLE=sales_invoice_item`
-- `SALES_INVOICE_TABLE=sales_invoice`
-- `ITEM_TABLE=item`
+- `SALES_ITEM_TABLE=tabSales Invoice Item`
+- `SALES_INVOICE_TABLE=tabSales Invoice`
+- `ITEM_TABLE=tabItem`
 - `AMOUNT_COLUMN=amount`
 - `QTY_COLUMN=qty`
 - `INVOICE_ID_COLUMN=parent`
@@ -108,6 +89,8 @@ Run every few minutes (example: every 5 minutes):
 - `ITEM_INDEX_COLUMN=idx`
 - `STATUS_COLUMN=docstatus`
 - `STATUS_VALUE=1` (default Submitted)
+- `DEFAULT_RANGE_DAYS=30` (used when no start/end is provided)
+- `MONTHS_CACHE_TTL_MS=300000` (server cache TTL for `/api/months`, default 5 min)
 
 ## Profit Calculation
 
@@ -118,6 +101,7 @@ profit = amount - (qty * cost)
 ## API Endpoints
 
 - `GET /api/health`
+- `GET /api/months?months=4` (preload data for current month + previous months)
 - `GET /api/metrics?start=YYYY-MM-DD&end=YYYY-MM-DD&item=...&warehouse=...&category=...&customer=...&docstatus=0|1`
 - `GET /api/timeseries?start=YYYY-MM-DD&end=YYYY-MM-DD&granularity=day|week|month&item=...&warehouse=...&category=...&customer=...&docstatus=0|1`
 - `GET /api/top-items?start=...&end=...&limit=10&item=...&warehouse=...&category=...&customer=...&docstatus=0|1`
@@ -130,11 +114,11 @@ profit = amount - (qty * cost)
 
 ## Important Notes
 
+- The dashboard reads directly from MySQL. The `/api/months` endpoint is cached in-memory and clears on server restart.
 - The sync uses `modified` for incremental loads so back-dated records are picked up. Each table uses a stable cursor `(modified, name)` to avoid stalling on ties.
-- The sync stores the full MySQL row in `raw` JSONB for each record.
 
 ## Troubleshooting
 
-- `Cannot find module 'pg'` → run `npm install`.
-- Empty charts → check the sync ran and Postgres tables have data.
+- `Cannot find module 'lru-cache'` → run `npm install`.
+- Empty charts → check MySQL credentials and table/column names.
 - Wrong profit → confirm `tabItem.cost` is correct.
