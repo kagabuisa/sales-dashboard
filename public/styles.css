@@ -129,13 +129,12 @@ h1 {
   border-color: #111;
 }
 
-#refresh {
+#refresh,
+.ghost-button {
   align-self: end;
   padding: 0.6rem 1rem;
   border: none;
   border-radius: 0.7rem;
-  background: var(--accent);
-  color: white;
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.2s ease;
@@ -143,6 +142,11 @@ h1 {
 
 #refresh:hover {
   transform: translateY(-2px);
+}
+
+#refresh {
+  background: var(--accent);
+  color: white;
 }
 
 main {
