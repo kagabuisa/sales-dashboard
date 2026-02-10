@@ -1,7 +1,7 @@
 const path = require("path");
 const express = require("express");
 const mysql = require("mysql2/promise");
-const LRUCache = require("lru-cache");
+const { LRUCache } = require("lru-cache");
 require("dotenv").config();
 
 const app = express();
