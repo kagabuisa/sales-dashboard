@@ -1,12 +1,6 @@
-# Sales Dashboard (Direct MySQL + Optional Sync)
+# Sales Dashboard (Direct MySQL)
 
-This app reads directly from your ERP **MySQL** database. A separate sync script still exists if you want to maintain a Postgres analytics copy, but the live dashboard uses MySQL.
-
-Tables synced:
-
-- `tabSales Invoice Item`
-- `tabSales Invoice`
-- `tabItem`
+This app reads directly from your ERP **MySQL** database.
 
 ## Features
 
@@ -42,19 +36,7 @@ Start the API/UI:
 npm run dev
 ```
 
-Optional: run a sync (one-off) if you still want to maintain a Postgres analytics DB:
-
-```bash
-npm run sync
-```
-
-## Recommended: Scheduled Sync (Optional)
-
-Run every few minutes (example: every 5 minutes):
-
-```bash
-*/5 * * * * cd /home/kagabu/sales-dashboard && /usr/bin/node sync.js >> /var/log/sales-sync.log 2>&1
-```
+By default the app listens on port 3000. When using Docker Compose, the host port is mapped to 3001 (container remains on 3000).
 
 ## Environment Variables
 
@@ -65,10 +47,6 @@ Run every few minutes (example: every 5 minutes):
 - `DB_USER`
 - `DB_PASSWORD`
 - `DB_NAME`
-
-### Sync (Optional)
-
-- `SYNC_BATCH_SIZE` (default `2000`)
 
 ### App Tables/Columns (MySQL ERP)
 
@@ -115,7 +93,6 @@ profit = amount - (qty * cost)
 ## Important Notes
 
 - The dashboard reads directly from MySQL. The `/api/months` endpoint is cached in-memory and clears on server restart.
-- The sync uses `modified` for incremental loads so back-dated records are picked up. Each table uses a stable cursor `(modified, name)` to avoid stalling on ties.
 
 ## Troubleshooting
 

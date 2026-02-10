@@ -192,8 +192,10 @@ function formatDateYMD(date) {
 }
 
 function normalizeRange(start, end) {
-  if (start || end) {
-    return { start, end };
+  const safeStart = normalizeDateParam(start);
+  const safeEnd = normalizeDateParam(end);
+  if (safeStart || safeEnd) {
+    return { start: safeStart, end: safeEnd };
   }
   const today = new Date();
   const endDate = formatDateYMD(today);
@@ -202,9 +204,17 @@ function normalizeRange(start, end) {
   return { start: formatDateYMD(startDate), end: endDate };
 }
 
+function normalizeDateParam(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return formatDateYMD(date);
+}
+
 function getMonthRange(months, endValue) {
   const safeMonths = Number.isFinite(months) && months > 0 ? months : 3;
-  const endDate = endValue ? new Date(endValue) : new Date();
+  const endDateCandidate = endValue ? new Date(endValue) : new Date();
+  const endDate = Number.isNaN(endDateCandidate.getTime()) ? new Date() : endDateCandidate;
   endDate.setHours(0, 0, 0, 0);
   const end = formatDateYMD(endDate);
   const startDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
@@ -214,12 +224,19 @@ function getMonthRange(months, endValue) {
 
 function getRollingRange(days, endValue) {
   const safeDays = Number.isFinite(days) && days > 0 ? days : 31;
-  const endDate = endValue ? new Date(endValue) : new Date();
+  const endDateCandidate = endValue ? new Date(endValue) : new Date();
+  const endDate = Number.isNaN(endDateCandidate.getTime()) ? new Date() : endDateCandidate;
   endDate.setHours(0, 0, 0, 0);
   const end = formatDateYMD(endDate);
   const startDate = new Date(endDate);
   startDate.setDate(startDate.getDate() - (safeDays - 1));
   return { start: formatDateYMD(startDate), end };
+}
+
+function clampLimit(value, fallback, max) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.min(Math.floor(parsed), max);
 }
 
 function buildWhere(start, end, filters) {
@@ -367,7 +384,7 @@ app.get("/api/timeseries", async (req, res) => {
 app.get("/api/top-items", async (req, res) => {
   try {
     const range = normalizeRange(req.query.start, req.query.end);
-    const { limit = 10 } = req.query;
+    const limit = clampLimit(req.query.limit, 10, 50);
     const filters = withFilters(req);
     const { where, params } = buildWhere(range.start, range.end, filters);
 
@@ -386,7 +403,7 @@ app.get("/api/top-items", async (req, res) => {
       LIMIT ?
     `;
 
-    const [rows] = await pool.query(sql, [...params, Number(limit)]);
+    const [rows] = await pool.query(sql, [...params, limit]);
     res.json(
       rows.map((r) => ({
         item: r.item,
@@ -403,7 +420,7 @@ app.get("/api/top-items", async (req, res) => {
 app.get("/api/top-customers", async (req, res) => {
   try {
     const range = normalizeRange(req.query.start, req.query.end);
-    const { limit = 10 } = req.query;
+    const limit = clampLimit(req.query.limit, 10, 50);
     const filters = withFilters(req);
     const { where, params } = buildWhere(range.start, range.end, filters);
 
@@ -422,7 +439,7 @@ app.get("/api/top-customers", async (req, res) => {
       LIMIT ?
     `;
 
-    const [rows] = await pool.query(sql, [...params, Number(limit)]);
+    const [rows] = await pool.query(sql, [...params, limit]);
     res.json(
       rows.map((r) => ({
         customer: r.customer,
@@ -439,7 +456,7 @@ app.get("/api/top-customers", async (req, res) => {
 app.get("/api/top-categories", async (req, res) => {
   try {
     const range = normalizeRange(req.query.start, req.query.end);
-    const { limit = 10 } = req.query;
+    const limit = clampLimit(req.query.limit, 10, 50);
     const filters = withFilters(req);
     const { where, params } = buildWhere(range.start, range.end, filters);
 
@@ -458,7 +475,7 @@ app.get("/api/top-categories", async (req, res) => {
       LIMIT ?
     `;
 
-    const [rows] = await pool.query(sql, [...params, Number(limit)]);
+    const [rows] = await pool.query(sql, [...params, limit]);
     res.json(
       rows.map((r) => ({
         category: r.category || "Uncategorized",
@@ -475,7 +492,7 @@ app.get("/api/top-categories", async (req, res) => {
 app.get("/api/top-warehouses", async (req, res) => {
   try {
     const range = normalizeRange(req.query.start, req.query.end);
-    const { limit = 10 } = req.query;
+    const limit = clampLimit(req.query.limit, 10, 50);
     const filters = withFilters(req);
     const { where, params } = buildWhere(range.start, range.end, filters);
 
@@ -494,7 +511,7 @@ app.get("/api/top-warehouses", async (req, res) => {
       LIMIT ?
     `;
 
-    const [rows] = await pool.query(sql, [...params, Number(limit)]);
+    const [rows] = await pool.query(sql, [...params, limit]);
     res.json(
       rows.map((r) => ({
         warehouse: r.warehouse || "Unassigned",
@@ -578,7 +595,7 @@ app.get("/api/filters", async (req, res) => {
 app.get("/api/invoices", async (req, res) => {
   try {
     const range = normalizeRange(req.query.start, req.query.end);
-    const { limit = 50 } = req.query;
+    const limit = clampLimit(req.query.limit, 50, 200);
     const filters = withFilters(req);
     const { where, params } = buildWhere(range.start, range.end, filters);
 
@@ -598,7 +615,7 @@ app.get("/api/invoices", async (req, res) => {
       LIMIT ?
     `;
 
-    const [rows] = await pool.query(sql, [...params, Number(limit)]);
+    const [rows] = await pool.query(sql, [...params, limit]);
     res.json(
       rows.map((r) => ({
         invoiceNo: r.invoice_no,

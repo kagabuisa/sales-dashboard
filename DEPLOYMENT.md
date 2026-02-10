@@ -34,7 +34,7 @@ rsync -av /home/kagabu/sales-dashboard/ ubuntu@<VPS_IP>:/home/ubuntu/sales-dashb
 
 ## 3. Configure env
 
-Create `/home/ubuntu/sales-dashboard/.env` with your MySQL and Postgres settings.
+Create `/home/ubuntu/sales-dashboard/.env` with your MySQL settings.
 
 ## 4. Build & run
 
@@ -44,8 +44,7 @@ sudo docker compose up -d --build
 ```
 
 This starts:
-- `app` on port 3000
-- `sync` worker (runs every 2 minutes)
+- `app` on port 3001 (mapped to container port 3000)
 
 ## 5. Nginx reverse proxy
 
@@ -67,5 +66,4 @@ sudo certbot --nginx -d dash.zenjji.com
 
 ```bash
 sudo docker logs -f sales-dashboard
-sudo docker logs -f sales-sync
 ```

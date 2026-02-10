@@ -116,22 +116,36 @@ async function fetchJson(path) {
 function renderList(target, rows, labelKey) {
   const container = $(target);
   container.className = "list";
-  container.innerHTML = "";
+  container.textContent = "";
   rows.forEach((row, index) => {
     const margin = row.revenue ? row.profit / row.revenue : 0;
     const div = document.createElement("div");
     div.className = "list-item";
-    div.innerHTML = `
-      <div>
-        <div>${row[labelKey] || "Unknown"}</div>
-        <div class="badge">#${index + 1}</div>
-      </div>
-      <div>
-        <div>${currency.format(row.revenue)}</div>
-        <div class="hint">Qty ${row.qty}</div>
-        <div class="hint">Profit ${currency.format(row.profit)} · ${formatPercent(margin)}</div>
-      </div>
-    `;
+
+    const left = document.createElement("div");
+    const label = document.createElement("div");
+    label.textContent = row[labelKey] || "Unknown";
+    const badge = document.createElement("div");
+    badge.className = "badge";
+    badge.textContent = `#${index + 1}`;
+    left.appendChild(label);
+    left.appendChild(badge);
+
+    const right = document.createElement("div");
+    const revenue = document.createElement("div");
+    revenue.textContent = currency.format(row.revenue);
+    const qty = document.createElement("div");
+    qty.className = "hint";
+    qty.textContent = `Qty ${row.qty}`;
+    const profit = document.createElement("div");
+    profit.className = "hint";
+    profit.textContent = `Profit ${currency.format(row.profit)} · ${formatPercent(margin)}`;
+    right.appendChild(revenue);
+    right.appendChild(qty);
+    right.appendChild(profit);
+
+    div.appendChild(left);
+    div.appendChild(right);
     container.appendChild(div);
   });
 }
@@ -139,7 +153,7 @@ function renderList(target, rows, labelKey) {
 function renderInvoiceList(rows) {
   const container = $("invoiceList");
   container.className = "list";
-  container.innerHTML = "";
+  container.textContent = "";
   if (!rows.length) {
     const empty = document.createElement("div");
     empty.className = "hint";
@@ -150,16 +164,27 @@ function renderInvoiceList(rows) {
   rows.forEach((row) => {
     const div = document.createElement("div");
     div.className = "list-item clickable";
-    div.innerHTML = `
-      <div>
-        <div>${row.invoiceNo}</div>
-        <div class="hint">${row.postingDate} · ${row.customer || "Unknown"}</div>
-      </div>
-      <div>
-        <div>${currency.format(row.revenue)}</div>
-        <div class="hint">Qty ${row.qty}</div>
-      </div>
-    `;
+
+    const left = document.createElement("div");
+    const invoice = document.createElement("div");
+    invoice.textContent = row.invoiceNo;
+    const meta = document.createElement("div");
+    meta.className = "hint";
+    meta.textContent = `${row.postingDate} · ${row.customer || "Unknown"}`;
+    left.appendChild(invoice);
+    left.appendChild(meta);
+
+    const right = document.createElement("div");
+    const revenue = document.createElement("div");
+    revenue.textContent = currency.format(row.revenue);
+    const qty = document.createElement("div");
+    qty.className = "hint";
+    qty.textContent = `Qty ${row.qty}`;
+    right.appendChild(revenue);
+    right.appendChild(qty);
+
+    div.appendChild(left);
+    div.appendChild(right);
     div.addEventListener("click", () => {
       openInvoice(row.invoiceNo).catch((err) => alert(err.message));
     });
@@ -184,7 +209,7 @@ function applyInvoiceSearch() {
 function renderInvoiceItems(rows) {
   const container = $("invoiceItems");
   container.className = "table";
-  container.innerHTML = "";
+  container.textContent = "";
 
   const warehouses = Array.from(new Set(rows.map((row) => row.warehouse).filter((value) => value)));
   const warehouseLabel =
@@ -192,23 +217,28 @@ function renderInvoiceItems(rows) {
 
   const head = document.createElement("div");
   head.className = "table-row head";
-  head.innerHTML = `
-    <div>Item</div>
-    <div>Qty</div>
-    <div>Rate</div>
-    <div>Amount</div>
-  `;
+  ["Item", "Qty", "Rate", "Amount"].forEach((label) => {
+    const cell = document.createElement("div");
+    cell.textContent = label;
+    head.appendChild(cell);
+  });
   container.appendChild(head);
 
   rows.forEach((row) => {
     const div = document.createElement("div");
     div.className = "table-row";
-    div.innerHTML = `
-      <div>${row.item}</div>
-      <div>${row.qty}</div>
-      <div>${currency.format(row.rate)}</div>
-      <div>${currency.format(row.amount)}</div>
-    `;
+    const item = document.createElement("div");
+    item.textContent = row.item;
+    const qty = document.createElement("div");
+    qty.textContent = String(row.qty);
+    const rate = document.createElement("div");
+    rate.textContent = currency.format(row.rate);
+    const amount = document.createElement("div");
+    amount.textContent = currency.format(row.amount);
+    div.appendChild(item);
+    div.appendChild(qty);
+    div.appendChild(rate);
+    div.appendChild(amount);
     container.appendChild(div);
   });
 
@@ -235,21 +265,34 @@ async function openInvoice(invoiceNo) {
       $("drawerInvoiceNo").textContent = "No items";
       $("drawerTitle").textContent = "—";
       $("drawerSubtitle").textContent = "";
-      $("invoiceItems").innerHTML = "";
+      $("invoiceItems").textContent = "";
       return;
     }
     const first = rows[0];
     const { warehouseLabel } = renderInvoiceItems(rows);
     $("drawerInvoiceNo").textContent = first.invoiceNo || "Invoice";
     $("drawerTitle").textContent = first.customer || "Unknown Customer";
-    $("drawerSubtitle").innerHTML = `
-      <span class="meta-chip">Date ${formatDateShort(first.postingDate)}</span>
-      <span class="meta-chip">Warehouse ${warehouseLabel}</span>
-      <span class="meta-group">
-        <span class="meta-chip strong">Total ${currency.format(first.grandTotal)}</span>
-        <span class="meta-chip danger strong">Outstanding ${currency.format(first.outstandingAmount)}</span>
-      </span>
-    `;
+    const subtitle = $("drawerSubtitle");
+    subtitle.textContent = "";
+    const dateChip = document.createElement("span");
+    dateChip.className = "meta-chip";
+    dateChip.textContent = `Date ${formatDateShort(first.postingDate)}`;
+    const warehouseChip = document.createElement("span");
+    warehouseChip.className = "meta-chip";
+    warehouseChip.textContent = `Warehouse ${warehouseLabel}`;
+    const group = document.createElement("span");
+    group.className = "meta-group";
+    const totalChip = document.createElement("span");
+    totalChip.className = "meta-chip strong";
+    totalChip.textContent = `Total ${currency.format(first.grandTotal)}`;
+    const outstandingChip = document.createElement("span");
+    outstandingChip.className = "meta-chip danger strong";
+    outstandingChip.textContent = `Outstanding ${currency.format(first.outstandingAmount)}`;
+    group.appendChild(totalChip);
+    group.appendChild(outstandingChip);
+    subtitle.appendChild(dateChip);
+    subtitle.appendChild(warehouseChip);
+    subtitle.appendChild(group);
     return;
   }
 
@@ -258,27 +301,40 @@ async function openInvoice(invoiceNo) {
     $("drawerInvoiceNo").textContent = "No items";
     $("drawerTitle").textContent = "—";
     $("drawerSubtitle").textContent = "";
-    $("invoiceItems").innerHTML = "";
+    $("invoiceItems").textContent = "";
     return;
   }
   const first = rows[0];
   const { warehouseLabel } = renderInvoiceItems(rows);
   $("drawerInvoiceNo").textContent = first.invoiceNo || "Invoice";
   $("drawerTitle").textContent = first.customer || "Unknown Customer";
-  $("drawerSubtitle").innerHTML = `
-    <span class="meta-chip">Date ${formatDateShort(first.postingDate)}</span>
-    <span class="meta-chip">Warehouse ${warehouseLabel}</span>
-    <span class="meta-group">
-      <span class="meta-chip strong">Total ${currency.format(first.grandTotal)}</span>
-      <span class="meta-chip danger strong">Outstanding ${currency.format(first.outstandingAmount)}</span>
-    </span>
-  `;
+  const subtitle = $("drawerSubtitle");
+  subtitle.textContent = "";
+  const dateChip = document.createElement("span");
+  dateChip.className = "meta-chip";
+  dateChip.textContent = `Date ${formatDateShort(first.postingDate)}`;
+  const warehouseChip = document.createElement("span");
+  warehouseChip.className = "meta-chip";
+  warehouseChip.textContent = `Warehouse ${warehouseLabel}`;
+  const group = document.createElement("span");
+  group.className = "meta-group";
+  const totalChip = document.createElement("span");
+  totalChip.className = "meta-chip strong";
+  totalChip.textContent = `Total ${currency.format(first.grandTotal)}`;
+  const outstandingChip = document.createElement("span");
+  outstandingChip.className = "meta-chip danger strong";
+  outstandingChip.textContent = `Outstanding ${currency.format(first.outstandingAmount)}`;
+  group.appendChild(totalChip);
+  group.appendChild(outstandingChip);
+  subtitle.appendChild(dateChip);
+  subtitle.appendChild(warehouseChip);
+  subtitle.appendChild(group);
 }
 
 function populateSelect(id, values) {
   const select = $(id);
   const current = select.value;
-  select.innerHTML = "";
+  select.textContent = "";
   const optionAll = document.createElement("option");
   optionAll.value = "";
   optionAll.textContent = "All";
@@ -311,9 +367,14 @@ function withinRange(dateValue, start, end) {
   return true;
 }
 
-function canUsePreload(start, end) {
+function canUsePreload(start, end, docstatus) {
   if (!state.preload.ready || !state.preload.range) return false;
   if (!start || !end) return false;
+  const effectiveDocstatus =
+    docstatus !== null && docstatus !== undefined && docstatus !== ""
+      ? String(docstatus)
+      : String(state.preload.defaultDocstatus || "1");
+  if (String(state.preload.defaultDocstatus || "1") !== effectiveDocstatus) return false;
   return start >= state.preload.range.start && end <= state.preload.range.end;
 }
 
@@ -624,7 +685,7 @@ async function loadFilters() {
   const end = $("end").value;
   const docstatus = $("statusFilter").value;
 
-  if (canUsePreload(start, end)) {
+  if (canUsePreload(start, end, docstatus)) {
     loadFiltersLocal({ start, end }, resolveDocstatus({ docstatus }));
     return;
   }
@@ -661,7 +722,7 @@ function populateCalendarSelects() {
   const start = startValue ? new Date(startValue) : new Date();
   const end = endValue ? new Date(endValue) : new Date(start.getFullYear(), start.getMonth(), 1);
 
-  yearSelect.innerHTML = "";
+  yearSelect.textContent = "";
   const years =
     state.calendar.years.length > 0
       ? state.calendar.years
@@ -689,7 +750,7 @@ function populateCalendarSelects() {
     "November",
     "December",
   ];
-  monthSelect.innerHTML = "";
+  monthSelect.textContent = "";
   monthNames.forEach((name, index) => {
     const option = document.createElement("option");
     option.value = String(index);
@@ -709,7 +770,7 @@ function renderDateList() {
   const list = $("dateList");
   const dates = buildMonthDays(state.calendar.year, state.calendar.month);
   const selected = state.calendar.selectedDate;
-  list.innerHTML = "";
+  list.textContent = "";
   dates.forEach((date) => {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -749,7 +810,7 @@ async function loadDashboard() {
     docstatus: $("statusFilter").value || null,
   };
 
-  if (canUsePreload(range.start, range.end)) {
+  if (canUsePreload(range.start, range.end, filters.docstatus)) {
     loadDashboardLocal(range, filters, granularity);
     return;
   }
@@ -876,7 +937,7 @@ function applyMonthButton(index) {
   state.calendar.rangeEnd = end;
   setActiveMonthButton(index);
   const range = { start, end };
-  if (canUsePreload(start, end)) {
+  if (canUsePreload(start, end, $("statusFilter").value)) {
     const docstatus = $("statusFilter").value;
     loadFiltersLocal(range, resolveDocstatus({ docstatus }));
     const filters = {
@@ -898,7 +959,7 @@ function applyMonthButton(index) {
 
 $("refresh").addEventListener("click", () => {
   const range = { start: $("start").value, end: $("end").value };
-  if (canUsePreload(range.start, range.end)) {
+  if (canUsePreload(range.start, range.end, $("statusFilter").value)) {
     const filters = {
       item: $("itemFilter").value || null,
       warehouse: $("warehouseFilter").value || null,
